@@ -13,7 +13,7 @@ public class SpdxLicenseUtil {
      * @param license license
      * @param blackList license black list
      * @return if the license pass black lists
-     * @throws InvalidSPDXAnalysisException
+     * @throws InvalidSPDXAnalysisException actually shall never
      */
     public static boolean isLicensePassBlackList(
             AnyLicenseInfo license,
@@ -49,7 +49,7 @@ public class SpdxLicenseUtil {
      * @param license license
      * @param whiteList license white list
      * @return if the license pass white lists
-     * @throws InvalidSPDXAnalysisException
+     * @throws InvalidSPDXAnalysisException actually shall never
      */
     public static boolean isLicensePassWhiteList(
             AnyLicenseInfo license,
