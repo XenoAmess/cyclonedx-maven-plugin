@@ -93,6 +93,7 @@ import java.util.UUID;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import org.apache.commons.io.input.BOMInputStream;
+import org.jetbrains.annotations.NotNull;
 
 import static org.apache.maven.artifact.Artifact.SCOPE_COMPILE;
 
@@ -169,6 +170,21 @@ public abstract class BaseCycloneDxMojo extends AbstractMojo implements Contextu
     @SuppressWarnings("CanBeFinal")
     @Parameter(property = "cyclonedx.verbose", defaultValue = "true", required = false)
     private boolean verbose = true;
+
+    @Parameter(property = "enforceExcludeArtifactId", required = false)
+    protected String[] enforceExcludeArtifactId;
+
+    @Parameter(property = "enforceComponentsSameVersion", defaultValue = "true", required = false)
+    protected boolean enforceComponentsSameVersion = true;
+
+    @Parameter(property = "enforceLicensesBlackList", required = false)
+    protected String[] enforceLicensesBlackList;
+
+    @Parameter(property = "enforceLicensesWhiteList", required = false)
+    protected String[] enforceLicensesWhiteList;
+
+    @Parameter(property = "mergeBomFile", required = false)
+    protected File mergeBomFile;
 
     /**
      * Various messages sent to console.
@@ -764,7 +780,7 @@ public abstract class BaseCycloneDxMojo extends AbstractMojo implements Contextu
     protected void execute(Set<Component> components, Set<Dependency> dependencies, MavenProject mavenProject) throws MojoExecutionException {
         try {
             getLog().info(MESSAGE_CREATING_BOM);
-            final Bom bom = new Bom();
+            Bom bom = new Bom();
             if (schemaVersion().getVersion() >= 1.1 && includeBomSerialNumber) {
                 bom.setSerialNumber("urn:uuid:" + UUID.randomUUID());
             }
@@ -794,11 +810,46 @@ public abstract class BaseCycloneDxMojo extends AbstractMojo implements Contextu
                 return;
             }
 
+            bom = postProcessingBom(bom);
+
             createBom(bom, mavenProject);
 
-        } catch (GeneratorException | ParserConfigurationException | IOException e) {
+        } catch (Exception e) {
             throw new MojoExecutionException("An error occurred executing " + this.getClass().getName() + ": " + e.getMessage(), e);
         }
+    }
+
+    @NotNull
+    protected Bom postProcessingBom(@NotNull Bom bom) throws Exception {
+        if (mergeBomFile != null) {
+            Bom mergeBom;
+            try {
+                mergeBom = new JsonParser().parse(mergeBomFile);
+            } catch (Exception e) {
+                mergeBom = new XmlParser().parse(mergeBomFile);
+            }
+            {
+                LinkedHashSet<Component> components = new LinkedHashSet<>();
+                if (mergeBom.getComponents() != null) {
+                    components.addAll(mergeBom.getComponents());
+                }
+                if (bom.getComponents() != null) {
+                    components.addAll(bom.getComponents());
+                }
+                bom.setComponents(new ArrayList<>(components));
+            }
+            {
+                LinkedHashSet<Dependency> dependencies = new LinkedHashSet<>();
+                if (mergeBom.getDependencies() != null) {
+                    dependencies.addAll(mergeBom.getDependencies());
+                }
+                if (bom.getDependencies() != null) {
+                    dependencies.addAll(bom.getDependencies());
+                }
+                bom.setDependencies(new ArrayList<>(dependencies));
+            }
+        }
+        return bom;
     }
 
     private void createBom(Bom bom, MavenProject mavenProject) throws ParserConfigurationException, IOException, GeneratorException,

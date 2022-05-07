@@ -20,7 +20,6 @@ package org.cyclonedx.maven;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Execute;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
@@ -28,6 +27,7 @@ import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.dependency.analyzer.ProjectDependencyAnalysis;
 import org.cyclonedx.model.Component;
 import org.cyclonedx.model.Dependency;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -45,17 +45,20 @@ import java.util.Set;
 )
 public class CycloneDxAggregateMojo extends BaseCycloneDxMojo {
 
-    protected boolean shouldExclude(MavenProject mavenProject) {
-        boolean shouldExclude = false;
-        if (excludeArtifactId != null && excludeArtifactId.length > 0) {
-            shouldExclude = Arrays.asList(excludeArtifactId).contains(mavenProject.getArtifactId());
-        }
-        if (excludeTestProject && mavenProject.getArtifactId().contains("test")) {
-            shouldExclude = true;
-        }
-        return shouldExclude;
+    protected boolean shouldExclude(@NotNull MavenProject mavenProject) {
+        return this.shouldExclude(mavenProject.getArtifactId());
     }
 
+    protected boolean shouldExclude(@NotNull String mavenProjectArtifactId) {
+        if (excludeArtifactId != null && excludeArtifactId.length > 0) {
+            if (Arrays.asList(excludeArtifactId).contains(mavenProjectArtifactId)) {
+                return true;
+            }
+        }
+        return excludeTestProject && mavenProjectArtifactId.contains("test");
+    }
+
+    @Override
     public void execute() throws MojoExecutionException {
         final boolean shouldSkip = Boolean.parseBoolean(System.getProperty("cyclonedx.skip", Boolean.toString(getSkip())));
         if (shouldSkip) {
